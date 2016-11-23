@@ -4,7 +4,7 @@
 ; generating reports in HTML format.
 ; Additionally, functionality was added to output summaries about the number of
 ; tests, failed test, errors, and the duration of tests.
-; The modifications are released under the EPL 1.0, which is the same license 
+; The modifications are released under the EPL 1.0, which is the same license
 ; as the original code.
 ; The author of the modifications is: Ruediger Gad <r.c.g@gmx.de>
 ; The original copyright etc. is written below.
@@ -65,33 +65,22 @@
   (apply str (map #(escape-xml-map % %) text)))
 
 (def ^:dynamic *var-context*)
-(def ^:dynamic *depth*)
-
-(defn indent
-  []
-  (dotimes [n (* *depth* 4)] (print " ")))
 
 (defn start-element
-  [tag pretty & [attrs]]
-  (if pretty (indent))
+  [tag & [attrs]]
   (print (str "<" tag))
   (if (seq attrs)
     (doseq [[key value] attrs]
       (print (str " " (name key) "=\"" (escape-xml value) "\""))))
-  (print ">")
-  (if pretty (println))
-  (set! *depth* (inc *depth*)))
+  (print ">"))
 
 (defn element-content
   [content]
   (print (escape-xml content)))
 
 (defn finish-element
-  [tag pretty]
-  (set! *depth* (dec *depth*))
-  (if pretty (indent))
-  (print (str "</" tag ">"))
-  (if pretty (println)))
+  [tag]
+  (print (str "</" tag ">")))
 
 (defn test-name
   [vars]
@@ -107,14 +96,14 @@
 
 (defn start-case
   [name classname]
-  (start-element 'testcase true 
-                 {:name name 
+  (start-element 'testcase
+                 {:name name
                   :classname classname
                   :time (format "%.4f" (/ (- (System/nanoTime) @testcase-start-time) 1000000000.0))}))
 
 (defn finish-case
   []
-  (finish-element 'testcase true))
+  (finish-element 'testcase))
 
 (defn suite-attrs
   [package classname]
@@ -129,16 +118,15 @@
 (defn start-suite
   [name]
   (let [[package classname] (package-class name)]
-    (start-element 'testsuite true (suite-attrs package classname))))
+    (start-element 'testsuite (suite-attrs package classname))))
 
 (defn finish-suite
   []
-  (finish-element 'testsuite true))
+  (finish-element 'testsuite))
 
 (defn message-el
   [tag message expected-str actual-str]
-  (indent)
-  (start-element tag false (if message {:message message} {}))
+  (start-element tag (if message {:message message} {}))
   (element-content
    (let [[file line] (t/file-position 5)
          detail (apply str (interpose
@@ -147,7 +135,7 @@
                              (str "  actual: " actual-str)
                              (str "      at: " file ":" line)]))]
      (if message (str message "\n" detail) detail)))
-  (finish-element tag false)
+  (finish-element tag)
   (println))
 
 (defn failure-el
@@ -167,12 +155,10 @@
 (defmulti ^:dynamic junit-report :type)
 
 (defmethod junit-report :begin-test-ns [m]
-  (set! *depth* (inc *depth*))
   (dosync (ref-set testsuite-temp-string ""))
   (dosync (ref-set testsuite-start-time (System/nanoTime))))
 
 (defmethod junit-report :end-test-ns [m]
-  (set! *depth* (dec *depth*))
   (t/with-test-out
     (start-suite (name (ns-name (:ns m))))
     (print @testsuite-temp-string)
@@ -218,8 +204,7 @@
   {:added "1.1"}
   [& body]
   `(binding [t/report junit-report
-             *var-context* (list)
-             *depth* 0]
+             *var-context* (list)]
      (t/with-test-out
        (println "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"))
      (let [result# ~@body]
