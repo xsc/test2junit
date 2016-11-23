@@ -43,13 +43,13 @@
   (robert.hooke/add-hook #'leiningen.test/form-for-testing-namespaces
                          add-test-var-println)
   (let [output-dir (test2junit.core/get-output-dir project)
-        test2junit-version ((first (filter #(= (first %) 'test2junit/test2junit) (:plugins project))) 1)
-        _ (println "Using test2junit version:" test2junit-version)
+        [artifact version] (first (filter #(= (some-> % first name) "test2junit") (:plugins project)))
+        _ (println "Using test2junit version:" version)
         test2junit-profile [{:injections `[(require 'test2junit.core)
                                            (test2junit.core/apply-junit-output-hook ~output-dir)]
                              :dependencies [['robert/hooke "1.3.0"]
                                             ['clj-assorted-utils "1.15.0"]
-                                            ['test2junit test2junit-version]]}]]
+                                            [artifact version]]}]]
     (binding [leiningen.core.main/*exit-process?* false]
       (try
         (apply leiningen.test/test (leiningen.core.project/merge-profiles project test2junit-profile) keys)
